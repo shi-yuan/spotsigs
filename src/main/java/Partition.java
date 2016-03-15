@@ -4,7 +4,7 @@ import java.util.Map;
 
 public class Partition {
 
-    private int idx, begin, end, size, maxLength;
+    private int idx, begin, end, size;
 
     private Map<Integer, List<Counter>> invertedIndex;
 
@@ -13,7 +13,6 @@ public class Partition {
         this.begin = begin;
         this.end = end;
         this.size = 0;
-        this.maxLength = 0;
         this.invertedIndex = new HashMap<Integer, List<Counter>>();
     }
 
@@ -47,14 +46,6 @@ public class Partition {
 
     public void setSize(int size) {
         this.size = size;
-    }
-
-    public int getMaxLength() {
-        return maxLength;
-    }
-
-    public void setMaxLength(int maxLength) {
-        this.maxLength = maxLength;
     }
 
     public Map<Integer, List<Counter>> getInvertedIndex() {

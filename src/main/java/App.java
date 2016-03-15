@@ -194,9 +194,8 @@ public class App {
                 indexArray.add(counter);
             }
             partition.setSize(partition.getSize() + 1);
-            partition.setMaxLength(Math.max(partition.getMaxLength(), counter.getTotalCount()));
         }
-        // Sort each index list in descending order of totalLength
+        // 按文档向量的长度从大到小进行排序
         for (Partition p : partitions) {
             for (Integer key : p.getInvertedIndex().keySet()) {
                 Collections.sort(p.getInvertedIndex().get(key));
@@ -206,55 +205,62 @@ public class App {
 
     /**
      * 去重
-     *
-     * @param counter
-     * @return
      */
     public Set<Counter> deduplicate(Counter counter, Partition[] partitions, double confidenceThreshold) {
         Partition partition = getPartition(partitions, counter.getTotalCount());
-        // Sort SpotSigs in ascending order of selectivity (DF)
-        Map<Integer, Integer> entries = counter.getEntries();
-        int i = 0;
-        int[] keyArr = new int[entries.size()];
-        int[] dfs = new int[entries.size()];
-        List<Counter> indexList;
-        for (Integer key : entries.keySet()) {
-            keyArr[i] = key;
-            dfs[i] = (indexList = partition.getInvertedIndex().get(key)) != null ? indexList.size() : Integer.MAX_VALUE;
-            i++;
-        }
-        quickSort(keyArr, dfs, 0, i - 1);
+        // 按SpotSigs在文档中的出现频率升序排序
+        List<Integer> keyList = new ArrayList<Integer>(counter.getEntries().keySet());
+        final Map<Integer, List<Counter>> invertedIndex = partition.getInvertedIndex();
+        Collections.sort(keyList, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer o1, Integer o2) {
+                List<Counter> a = invertedIndex.get(o1), b = invertedIndex.get(o2);
+                return (a != null ? a.size() : Integer.MAX_VALUE) - (b != null ? b.size() : Integer.MAX_VALUE);
+            }
+        });
 
-        //
-        Set<Counter> duplicates = new HashSet<Counter>(), checked;
-        double delta1, delta2;
-        int iterations = 1;
         // Check for next partition
+        int iterations = 1;
         if (partition.getIdx() < partitions.length - 1
                 && partition.getEnd() - counter.getTotalCount() <= (1 - confidenceThreshold) * partition.getEnd()) {
             iterations = 2;
         }
-        for (int iteration = 0; iteration < iterations; iteration++) {
+        Set<Counter> duplicates = new HashSet<Counter>(), checked, set;
+        double delta1, delta2;
+        List<Counter> indexList;
+        for (int iteration = 0, maxLength; iteration < iterations; iteration++) {
             delta1 = 0;
             checked = new HashSet<Counter>();
-            for (Integer key : keyArr) {
+            for (Integer key : keyList) {
                 indexList = partition.getInvertedIndex().get(key);
-                for (Counter counter2 : indexList) {
-                    delta2 = counter.getTotalCount() - counter2.getTotalCount();
-                    if (counter.equals(counter2) || checked.contains(counter2)) {
-                        continue;
-                    } else if (delta2 < 0 && delta1 - delta2 > (1 - confidenceThreshold) * counter2.getTotalCount()) {
-                        continue;
-                    } else if (delta2 >= 0 && delta1 + delta2 > (1 - confidenceThreshold) * counter.getTotalCount()) {
-                        break;
-                    } else if (getJaccard(keyArr, counter, counter2, confidenceThreshold) >= confidenceThreshold) {
-                        duplicates.add(counter2);
-                        checked.add(counter2);
+                if (indexList != null) {
+                    for (Counter counter2 : indexList) {
+                        delta2 = counter.getTotalCount() - counter2.getTotalCount();
+                        if (counter.equals(counter2) || checked.contains(counter2)) {
+                            continue;
+                        } else if (delta2 < 0 && delta1 - delta2 > (1 - confidenceThreshold) * counter2.getTotalCount()) {
+                            continue;
+                        } else if (delta2 >= 0 && delta1 + delta2 > (1 - confidenceThreshold) * counter.getTotalCount()) {
+                            break;
+                        } else if (getJaccard(counter, counter2) >= confidenceThreshold) {
+                            duplicates.add(counter2);
+                            checked.add(counter2);
+                        }
                     }
                 }
+
                 // Early threshold break for inverted index traversal
+                set = new HashSet<Counter>();
+                for (List<Counter> list : partition.getInvertedIndex().values()) {
+                    set.addAll(list);
+                }
+                set.removeAll(checked);
+                maxLength = 0;
+                for (Counter item : set) {
+                    maxLength = Math.max(maxLength, item.getTotalCount());
+                }
                 delta1 += counter.getCount(key);
-                if (delta1 >= (1 - confidenceThreshold) * partition.getMaxLength()) {
+                if (delta1 >= (1 - confidenceThreshold) * maxLength) {
                     break;
                 }
             }
@@ -269,64 +275,26 @@ public class App {
     /**
      * Jaccard相似度
      */
-    public double getJaccard(int[] keys, Counter index1, Counter index2, double threshold) {
-        double min, max, s_min = 0, s_max = 0, bound = 0;
-        double upper_max = Math.max(index1.getTotalCount(), index2.getTotalCount());
-        double upper_union = index1.getTotalCount() + index2.getTotalCount();
-        int s_c1 = 0, s_c2 = 0;
-
-        for (int i = 0, c1, c2, len = keys.length; i < len; i++) {
-            c1 = index1.getCount(keys[i]);
-            c2 = index2.getCount(keys[i]);
-            min = Math.min(c1, c2);
-            max = Math.max(c1, c2);
-            s_min += min;
-            s_max += max;
-            s_c1 += c1;
-            s_c2 += c2;
-
-            // Early threshold break for pairwise counter comparison
-            bound += max - min;
-            if ((upper_max - bound) / upper_max < threshold)
-                return 0;
-            else if (s_min / upper_union >= threshold)
-                return 1;
+    public double getJaccard(Counter index1, Counter index2) {
+        Set<Integer> keySet = new HashSet<Integer>(index1.getEntries().keySet());
+        keySet.retainAll(index2.getEntries().keySet());
+        if (!keySet.isEmpty()) {
+            double s_min = 0.0, s_max = 0.0;
+            int c1, c2;
+            for (Integer key : keySet) {
+                c1 = index1.getCount(key);
+                c2 = index2.getCount(key);
+                if (c1 <= c2) {
+                    s_min += c1;
+                    s_max += c2;
+                } else {
+                    s_min += c2;
+                    s_max += c1;
+                }
+            }
+            return s_min / s_max;
         }
-
-        return s_min / (s_max + (index1.getTotalCount() - s_c1) + (index2.getTotalCount() - s_c2));
-    }
-
-    /**
-     * 快速排序
-     */
-    private int partition(int[] keys, int[] counts, int low, int high) {
-        int i = low - 1, j = high + 1, pivotK = counts[(low + high) / 2], temp;
-        while (i < j) {
-            i++;
-            while (counts[i] < pivotK) {
-                i++;
-            }
-            j--;
-            while (counts[j] > pivotK) {
-                j--;
-            }
-            if (i < j) {
-                temp = keys[i];
-                keys[i] = keys[j];
-                keys[j] = temp;
-                temp = counts[i];
-                counts[i] = counts[j];
-                counts[j] = temp;
-            }
-        }
-        return j;
-    }
-
-    private void quickSort(int[] keys, int[] counts, int low, int high) {
-        if (low >= high)
-            return;
-        int p = partition(keys, counts, low, high);
-        quickSort(keys, counts, low, p);
-        quickSort(keys, counts, p + 1, high);
+        // 如果没有交集
+        return 0;
     }
 }
