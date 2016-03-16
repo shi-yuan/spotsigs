@@ -69,7 +69,10 @@ public class App {
         List<Counter> counters = new ArrayList<>();
         // 预处理所有文档，提取每个文档的特征集
         for (String doc : docs) {
-            counters.add(app.createIndex((++docId) + "", doc, chains, delims, beadPositions, stopwords));
+            Counter c = app.createIndex((++docId) + "", doc, chains, delims, beadPositions, stopwords);
+            if (0 < c.getTotalCount()) {
+                counters.add(c);
+            }
         }
 
         // 分隔文档向量元素并建立倒排索引
@@ -83,13 +86,17 @@ public class App {
             counters2.add(app.createIndex((++docId) + "", doc, chains, delims, beadPositions, stopwords));
         }
         for (Counter c : counters2) {
-            Set<Counter> duplicates = app.deduplicate(c, partitions, confidenceThreshold);
-            if (duplicates != null && !duplicates.isEmpty()) {
-                System.out.println("================================");
-                for (Counter item : duplicates) {
-                    System.out.println(item);
+            if (0 < c.getTotalCount()) {
+                Set<Counter> duplicates = app.deduplicate(c, partitions, confidenceThreshold);
+                if (duplicates != null && !duplicates.isEmpty()) {
+                    System.out.println("================================");
+                    for (Counter item : duplicates) {
+                        System.out.println(item);
+                    }
+                    System.out.println("================================");
                 }
-                System.out.println("================================");
+            } else {
+                // TODO: 如果没有特征
             }
         }
     }
@@ -100,31 +107,33 @@ public class App {
     public Counter createIndex(String docid, String content, int chains, String delims, Map<String, Integer> beadPositions, Set<String> stopwords) {
         List<String> words = new ArrayList<String>();
         StringTokenizer tokenizer = new StringTokenizer(content.trim(), delims);
-        while (tokenizer.hasMoreTokens())
-            words.add(tokenizer.nextToken().toLowerCase());
-
+        Set<String> antecedents = beadPositions.keySet();
+        while (tokenizer.hasMoreTokens()) {
+            String token = tokenizer.nextToken().trim().toLowerCase();
+            if (!antecedents.contains(token) && stopwords.contains(token)) {
+                // 过滤停用词
+                continue;
+            }
+            words.add(token);
+        }
         String word, token;
         StringBuilder chain;
         Counter counter = new Counter(docid);
-        for (Integer i = 0, j, k, pos, length = words.size(); i < length - 1; i++) {
+        for (Integer i = 0, pos, length = words.size(); i < length - 1; ++i) {
             word = words.get(i);
             if ((pos = beadPositions.get(word)) != null) {
                 chain = new StringBuilder();
-                k = i + pos;
-                for (j = 0; j < chains && k < length; j++) {
-                    token = words.get(k);
-                    while (stopwords.contains(token) && k < length) {
-                        token = words.get(k);
-                        k++;
+                for (int j = i + pos, c = chains; j < length; ++j) {
+                    if (!antecedents.contains(token = words.get(j))) {
+                        chain.append(":").append(token);
+                        if (--c <= 0) {
+                            break;
+                        }
                     }
-                    if (!stopwords.contains(token)) {
-                        chain.append(token);
-                        chain.append(":");
-                    }
-                    k += pos;
                 }
                 if (chain.length() > 0) {
-                    counter.incrementCount(getKey(chain.toString()));
+                    System.out.println(word + chain.toString());
+                    counter.incrementCount(getKey(word + chain.toString()));
                 }
             }
         }
