@@ -195,7 +195,7 @@ public class App {
         // 分隔文档集
         for (Counter counter : counters) {
             partition = getPartition(partitions, counter.getTotalCount());
-            for (Integer key : counter.getEntries().keySet()) {
+            for (Integer key : counter.getSignatures().keySet()) {
                 if ((indexArray = partition.getInvertedIndex().get(key)) == null) {
                     indexArray = new ArrayList<Counter>();
                     partition.getInvertedIndex().put(key, indexArray);
@@ -218,7 +218,7 @@ public class App {
     public Set<Counter> deduplicate(Counter counter, Partition[] partitions, double confidenceThreshold) {
         Partition partition = getPartition(partitions, counter.getTotalCount());
         // 按SpotSigs在文档中的出现频率升序排序
-        List<Integer> keyList = new ArrayList<Integer>(counter.getEntries().keySet());
+        List<Integer> keyList = new ArrayList<Integer>(counter.getSignatures().keySet());
         final Map<Integer, List<Counter>> invertedIndex = partition.getInvertedIndex();
         Collections.sort(keyList, new Comparator<Integer>() {
             @Override
@@ -285,25 +285,21 @@ public class App {
      * Jaccard相似度
      */
     public double getJaccard(Counter index1, Counter index2) {
-        Set<Integer> keySet = new HashSet<Integer>(index1.getEntries().keySet());
-        keySet.retainAll(index2.getEntries().keySet());
-        if (!keySet.isEmpty()) {
-            double s_min = 0.0, s_max = 0.0;
-            int c1, c2;
-            for (Integer key : keySet) {
-                c1 = index1.getCount(key);
-                c2 = index2.getCount(key);
-                if (c1 <= c2) {
-                    s_min += c1;
-                    s_max += c2;
-                } else {
-                    s_min += c2;
-                    s_max += c1;
-                }
+        Set<Integer> keySet = new HashSet<Integer>(index1.getSignatures().keySet());
+        keySet.addAll(index2.getSignatures().keySet());
+        double s_min = 0.0, s_max = 0.0;
+        int c1, c2;
+        for (Integer key : keySet) {
+            c1 = index1.getCount(key);
+            c2 = index2.getCount(key);
+            if (c1 <= c2) {
+                s_min += c1;
+                s_max += c2;
+            } else {
+                s_min += c2;
+                s_max += c1;
             }
-            return s_min / s_max;
         }
-        // 如果没有交集
-        return 0;
+        return s_min / s_max;
     }
 }

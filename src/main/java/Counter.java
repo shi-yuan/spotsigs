@@ -8,20 +8,20 @@ public class Counter implements Comparable<Counter> {
 
     private String docId;
     private int totalCount;
-    private Map<Integer, Integer> entries;
+    private Map<Integer, Integer> signatures;
 
     public Counter(String docId) {
         this.docId = docId;
         this.totalCount = 0;
-        this.entries = new HashMap<Integer, Integer>();
+        this.signatures = new HashMap<Integer, Integer>();
     }
 
     public int getCount(int key) {
-        return entries.containsKey(key) ? entries.get(key) : 0;
+        return signatures.containsKey(key) ? signatures.get(key) : 0;
     }
 
     public void incrementCount(int key) {
-        entries.put(key, getCount(key) + 1);
+        signatures.put(key, getCount(key) + 1);
         totalCount++;
     }
 
@@ -48,10 +48,10 @@ public class Counter implements Comparable<Counter> {
 
     public String toString() {
         String s = docId + "=[";
-        Integer[] keys = entries.keySet().toArray(new Integer[entries.size()]);
-        for (int i = 0; i < entries.size(); i++) {
+        Integer[] keys = signatures.keySet().toArray(new Integer[signatures.size()]);
+        for (int i = 0; i < signatures.size(); i++) {
             s += String.valueOf(keys[i]) + ":" + String.valueOf(getCount(keys[i]))
-                    + (i < entries.size() - 1 ? ", " : "");
+                    + (i < signatures.size() - 1 ? ", " : "");
         }
         s += "] @ " + String.valueOf(totalCount);
         return s;
@@ -73,11 +73,11 @@ public class Counter implements Comparable<Counter> {
         this.totalCount = totalCount;
     }
 
-    public Map<Integer, Integer> getEntries() {
-        return entries;
+    public Map<Integer, Integer> getSignatures() {
+        return signatures;
     }
 
-    public void setEntries(Map<Integer, Integer> entries) {
-        this.entries = entries;
+    public void setSignatures(Map<Integer, Integer> signatures) {
+        this.signatures = signatures;
     }
 }
