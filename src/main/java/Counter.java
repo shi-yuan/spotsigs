@@ -45,15 +45,16 @@ public class Counter implements Comparable<Counter> {
         return docId.equals(((Counter) o).docId);
     }
 
+    @Override
     public String toString() {
-        String s = docId + "=[";
-        Integer[] keys = signatures.keySet().toArray(new Integer[signatures.size()]);
-        for (int i = 0; i < signatures.size(); i++) {
-            s += String.valueOf(keys[i]) + ":" + String.valueOf(getCount(keys[i]))
-                    + (i < signatures.size() - 1 ? ", " : "");
+        StringBuilder sb = new StringBuilder(docId + "=[");
+        int size = signatures.size();
+        Integer[] keys = signatures.keySet().toArray(new Integer[size]);
+        for (int i = 0; i < size; i++) {
+            sb.append(keys[i]).append(":").append(getCount(keys[i])).append(i < size - 1 ? ", " : "");
         }
-        s += "] @ " + String.valueOf(totalCount);
-        return s;
+        sb.append("] @ ").append(String.valueOf(totalCount));
+        return sb.toString();
     }
 
     public String getDocId() {
