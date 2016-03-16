@@ -159,16 +159,16 @@ public class App {
      * @return
      */
     public Partition[] getPartitions(int range, double confidenceThreshold) {
-        int idx = 0, p = 1, last = p;
+        int index = 0, p = 1, last = p;
         List<Partition> partitions = new ArrayList<Partition>();
         for (; p <= range; p++) {
             if (p - last > (1 - confidenceThreshold) * p) {
-                partitions.add(new Partition(idx, last, p + 1));
+                partitions.add(new Partition(index, last, p + 1));
                 last = p + 1;
-                idx++;
+                index++;
             }
         }
-        partitions.add(new Partition(idx, last, Integer.MAX_VALUE));
+        partitions.add(new Partition(index, last, Integer.MAX_VALUE));
         return partitions.toArray(new Partition[partitions.size()]);
     }
 
@@ -227,7 +227,7 @@ public class App {
 
         // Check for next partition
         int iterations = 1;
-        if (partition.getIdx() < partitions.length - 1
+        if (partition.getIndex() < partitions.length - 1
                 && partition.getEnd() - counter.getTotalCount() <= (1 - confidenceThreshold) * partition.getEnd()) {
             iterations = 2;
         }
@@ -272,7 +272,7 @@ public class App {
             }
             // Also check this doc against the next partition
             if (iteration == 0 && iterations == 2) {
-                partition = partitions[partition.getIdx() + 1];
+                partition = partitions[partition.getIndex() + 1];
             }
         }
         return duplicates;

@@ -4,24 +4,24 @@ import java.util.Map;
 
 public class Partition {
 
-    private int idx, begin, end, size;
+    private int index, begin, end, size;
 
     private Map<Integer, List<Counter>> invertedIndex;
 
-    public Partition(int idx, int begin, int end) {
-        this.idx = idx;
+    public Partition(int index, int begin, int end) {
+        this.index = index;
         this.begin = begin;
         this.end = end;
         this.size = 0;
         this.invertedIndex = new HashMap<Integer, List<Counter>>();
     }
 
-    public int getIdx() {
-        return idx;
+    public int getIndex() {
+        return index;
     }
 
-    public void setIdx(int idx) {
-        this.idx = idx;
+    public void setIndex(int index) {
+        this.index = index;
     }
 
     public int getBegin() {
