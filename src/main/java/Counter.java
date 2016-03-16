@@ -30,7 +30,7 @@ public class Counter implements Comparable<Counter> {
      */
     @Override
     public int compareTo(Counter c) {
-        return Integer.compare(c != null ? c.totalCount : 0, totalCount);
+        return c != null ? Double.compare(c.totalCount, this.totalCount) : 0;
     }
 
     @Override
@@ -42,8 +42,7 @@ public class Counter implements Comparable<Counter> {
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Counter counter = (Counter) o;
-        return docId.equals(counter.docId);
+        return docId.equals(((Counter) o).docId);
     }
 
     public String toString() {
