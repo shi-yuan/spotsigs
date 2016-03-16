@@ -107,28 +107,25 @@ public class App {
     public Counter createIndex(String docid, String content, int chains, String delims, Map<String, Integer> beadPositions, Set<String> stopwords) {
         List<String> words = new ArrayList<String>();
         StringTokenizer tokenizer = new StringTokenizer(content.trim(), delims);
-        Set<String> antecedents = beadPositions.keySet();
-        while (tokenizer.hasMoreTokens()) {
-            String token = tokenizer.nextToken().trim().toLowerCase();
-            if (!antecedents.contains(token) && stopwords.contains(token)) {
-                // 过滤停用词
-                continue;
-            }
-            words.add(token);
-        }
-        String word, token;
+        while (tokenizer.hasMoreTokens())
+            words.add(tokenizer.nextToken().toLowerCase());
+
+        String word;
         StringBuilder chain;
         Counter counter = new Counter(docid);
         for (Integer i = 0, pos, length = words.size(); i < length - 1; ++i) {
             word = words.get(i);
             if ((pos = beadPositions.get(word)) != null) {
                 chain = new StringBuilder();
-                for (int j = i + pos, c = chains; j < length; ++j) {
-                    if (!antecedents.contains(token = words.get(j))) {
-                        chain.append(":").append(token);
+                for (int j = i + pos, c = chains; j < length; ) {
+                    if (!stopwords.contains(words.get(j))) {
+                        chain.append(":").append(words.get(j));
                         if (--c <= 0) {
                             break;
                         }
+                        j += pos;
+                    } else {
+                        ++j;
                     }
                 }
                 if (chain.length() > 0) {
