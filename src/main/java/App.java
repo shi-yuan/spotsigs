@@ -5,52 +5,45 @@ import java.util.*;
 
 public class App {
 
-    public static final Map<String, Integer> keys = new HashMap<String, Integer>(1000000);
-    public static HashMap<String, Integer> beadPositions;
-    public static int chains;
-    public static double confidenceThreshold;
-    public static int range;
-    public static HashSet<String> stopwords;
-    public static String delims = " \t\n\r\f.()\",-:;/\\?!@<>$#&%*+|=_`~'{}[]";
-    public static int docId = 0;
+    private static final Map<String, Integer> keys = new HashMap<String, Integer>(1000000);
+    private static final Map<String, Integer> beadPositions = new HashMap<String, Integer>(100);
+    private static int chains;
+    private static double confidenceThreshold;
+    private static int range;
+    private static final Set<String> stopwords = new HashSet<String>();
+    private static final String delims = " \t\n\r\f.()\",-:;/\\?!@<>$#&%*+|=_`~'{}[]";
+    private static int docId = 0;
 
     static {
         try (BufferedReader in = new BufferedReader(new InputStreamReader(
-                App.class.getClassLoader().getResource("app.config").openStream()))) {
-            String line;
+                App.class.getClassLoader().getResource("app.config").openStream()));
+             BufferedReader reader = new BufferedReader(new InputStreamReader(
+                     App.class.getClassLoader().getResource("stopwords.txt").openStream()))) {
             in.readLine();
             chains = Integer.parseInt(in.readLine());
-            beadPositions = new HashMap<String, Integer>(100);
             in.readLine();
+            String line;
             while ((line = in.readLine()) != null) {
                 if (line.equals("<ANTECEDENTS>"))
                     continue;
                 if (line.equals("</ANTECEDENTS>"))
                     break;
                 String[] antecedentInfo = line.split(" ");
-                int spotDistance = Integer.parseInt(antecedentInfo[1]);
-                beadPositions.put(antecedentInfo[0], spotDistance);
+                beadPositions.put(antecedentInfo[0].toLowerCase(), Integer.parseInt(antecedentInfo[1]));
             }
 
             in.readLine();
-            line = in.readLine();
-            confidenceThreshold = Double.parseDouble(line);
+            confidenceThreshold = Double.parseDouble(in.readLine());
 
             in.readLine();
             in.readLine();
             range = Integer.parseInt(in.readLine());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
 
-        stopwords = new HashSet<String>();
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(
-                App.class.getClassLoader().getResource("stopwords.txt").openStream()))) {
-            String tmp;
-            while ((tmp = reader.readLine()) != null) {
-                StringTokenizer tokenizer = new StringTokenizer(tmp.trim(), delims);
+            //
+            while ((line = reader.readLine()) != null) {
+                StringTokenizer tokenizer = new StringTokenizer(line.trim(), delims);
                 while (tokenizer.hasMoreTokens())
-                    stopwords.add(tokenizer.nextToken());
+                    stopwords.add(tokenizer.nextToken().toLowerCase());
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -161,11 +154,11 @@ public class App {
     public Partition[] getPartitions(int range, double confidenceThreshold) {
         int index = 0, p = 1, last = p;
         List<Partition> partitions = new ArrayList<Partition>();
-        for (; p <= range; p++) {
+        for (; p <= range; ++p) {
             if (p - last > (1 - confidenceThreshold) * p) {
                 partitions.add(new Partition(index, last, p + 1));
                 last = p + 1;
-                index++;
+                ++index;
             }
         }
         partitions.add(new Partition(index, last, Integer.MAX_VALUE));
@@ -175,7 +168,7 @@ public class App {
     public Partition getPartition(Partition[] partitions, int totalCount) {
         int i = 0, length = partitions.length;
         while (i < length && partitions[i].getEnd() <= totalCount) {
-            i++;
+            ++i;
         }
         return i == length ? partitions[length - 1] : partitions[i];
     }
@@ -234,7 +227,7 @@ public class App {
         Set<Counter> duplicates = new HashSet<Counter>(), checked, set;
         double delta1, delta2;
         List<Counter> indexList;
-        for (int iteration = 0, maxLength; iteration < iterations; iteration++) {
+        for (int iteration = 0, maxLength; iteration < iterations; ++iteration) {
             delta1 = 0;
             checked = new HashSet<Counter>();
             for (Integer key : keyList) {
