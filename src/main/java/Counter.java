@@ -30,7 +30,7 @@ public class Counter implements Comparable<Counter> {
      */
     @Override
     public int compareTo(Counter c) {
-        return c != null ? Double.compare(c.totalCount, this.totalCount) : 0;
+        return Integer.compare(c.totalCount, this.totalCount);
     }
 
     @Override
@@ -50,10 +50,10 @@ public class Counter implements Comparable<Counter> {
         StringBuilder sb = new StringBuilder(docId + "=[");
         int size = signatures.size();
         Integer[] keys = signatures.keySet().toArray(new Integer[size]);
-        for (int i = 0; i < size; i++) {
+        for (int i = 0; i < size; ++i) {
             sb.append(keys[i]).append(":").append(getCount(keys[i])).append(i < size - 1 ? ", " : "");
         }
-        sb.append("] @ ").append(String.valueOf(totalCount));
+        sb.append("] @ ").append(totalCount);
         return sb.toString();
     }
 
